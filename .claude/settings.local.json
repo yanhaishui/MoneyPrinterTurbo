@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip3 list)",
+      "Bash(conda env list)",
+      "Bash(python3 -m venv .venv)",
+      "Bash(.venv/bin/pip install -r requirements.txt)",
+      "Bash(brew list imagemagick)",
+      "Bash(curl -s http://localhost:8501)",
+      "Bash(kill 63110)",
+      "Bash(pkill -f \"streamlit run\")",
+      "Bash(.venv/bin/pip show edge-tts)",
+      "Bash(.venv/bin/python -c \"import edge_tts; import asyncio; async def test\\(\\): voices = await edge_tts.list_voices\\(\\); print\\(''OK, voices count:'', len\\(voices\\)\\); asyncio.run\\(test\\(\\)\\)\")",
+      "Bash(/tmp/test_tts2.py:*)",
+      "Bash(.venv/bin/python /tmp/test_tts2.py)",
+      "Bash(.venv/bin/pip index versions edge-tts)",
+      "Bash(.venv/bin/pip install \"edge-tts==7.2.7\")",
+      "Bash(/tmp/test_tts3.py:*)",
+      "Bash(.venv/bin/python /tmp/test_tts3.py)",
+      "Bash(/tmp/test_voice.py:*)",
+      "Bash(.venv/bin/python /tmp/test_voice.py)",
+      "Bash(/tmp/test_tts_full.py:*)",
+      "Bash(.venv/bin/python /tmp/test_tts_full.py)",
+      "Bash(/tmp/test_stream.py:*)",
+      "Bash(.venv/bin/python /tmp/test_stream.py)",
+      "Bash(pkill -f \"whisper\")",
+      "Bash(/tmp/test_subtitle.py:*)",
+      "Bash(.venv/bin/python /tmp/test_subtitle.py)",
+      "WebFetch(domain:docs.qingque.cn)",
+      "WebFetch(domain:app.klingai.com)",
+      "WebFetch(domain:agentsapis.com)",
+      "WebFetch(domain:docs.aimlapi.com)",
+      "WebFetch(domain:piapi.ai)",
+      "WebFetch(domain:github.com)",
+      "Bash(.venv/bin/pip install \"PyJWT>=2.8.0\")",
+      "Bash(.venv/bin/python -c \":*)",
+      "Bash(source .venv/bin/activate)",
+      "Bash(python3 -c \":*)"
+    ]
+  }
+}

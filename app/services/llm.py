@@ -95,7 +95,7 @@ def _generate_response(prompt: str) -> str:
                     if not base_url:
                         base_url = "https://text.pollinations.ai/openai"
                     model_name = config.app.get("pollinations_model_name", "openai-fast")
-                   
+
                     # Prepare the payload
                     payload = {
                         "model": model_name,
@@ -104,28 +104,28 @@ def _generate_response(prompt: str) -> str:
                         ],
                         "seed": 101  # Optional but helps with reproducibility
                     }
-                    
+
                     # Optional parameters if configured
                     if config.app.get("pollinations_private"):
                         payload["private"] = True
                     if config.app.get("pollinations_referrer"):
                         payload["referrer"] = config.app.get("pollinations_referrer")
-                    
+
                     headers = {
                         "Content-Type": "application/json"
                     }
-                    
+
                     # Make the API request
                     response = requests.post(base_url, headers=headers, json=payload)
                     response.raise_for_status()
                     result = response.json()
-                    
+
                     if result and "choices" in result and len(result["choices"]) > 0:
                         content = result["choices"][0]["message"]["content"]
                         return content.replace("\n", "")
                     else:
                         raise Exception(f"[{llm_provider}] returned an invalid response format")
-                        
+
                 except requests.exceptions.RequestException as e:
                     raise Exception(f"[{llm_provider}] request failed: {str(e)}")
                 except Exception as e:
@@ -239,7 +239,7 @@ def _generate_response(prompt: str) -> str:
 
             if llm_provider == "ernie":
                 response = requests.post(
-                    "https://aip.baidubce.com/oauth/2.0/token", 
+                    "https://aip.baidubce.com/oauth/2.0/token",
                     params={
                         "grant_type": "client_credentials",
                         "client_id": api_key,
@@ -293,10 +293,10 @@ def _generate_response(prompt: str) -> str:
                         delta = chunk.choices[0].delta
                         if delta and delta.content:
                             content += delta.content
-                    
+
                     if not content.strip():
                         raise ValueError("Empty content in stream response")
-                    
+
                     return content.replace("\n", "")
                 else:
                     raise Exception(f"[{llm_provider}] returned an empty response")
@@ -329,7 +329,7 @@ def _generate_response(prompt: str) -> str:
 
 
 def generate_script(
-    video_subject: str, language: str = "", paragraph_number: int = 1
+    video_subject: str, language: str = "", paragraph_number: int = 1, word_count: int = 0
 ) -> str:
     prompt = f"""
 # Role: Video Script Generator
@@ -346,11 +346,14 @@ Generate a script for a video, depending on the subject of the video.
 6. do not include "voiceover", "narrator" or similar indicators of what should be spoken at the beginning of each paragraph or line.
 7. you must not mention the prompt, or anything about the script itself. also, never talk about the amount of paragraphs or lines. just write the script.
 8. respond in the same language as the video subject.
+9. if a word count is specified, the total length of the script must be approximately that many characters (for Chinese) or words (for other languages).
 
 # Initialization:
 - video subject: {video_subject}
 - number of paragraphs: {paragraph_number}
 """.strip()
+    if word_count and word_count > 0:
+        prompt += f"\n- approximate word/character count: {word_count}"
     if language:
         prompt += f"\n- language: {language}"
 
@@ -404,20 +407,38 @@ Generate a script for a video, depending on the subject of the video.
 
 def generate_terms(video_subject: str, video_script: str, amount: int = 5) -> List[str]:
     prompt = f"""
-# Role: Video Search Terms Generator
+# Role: Stock Video Search Terms Generator
 
 ## Goals:
-Generate {amount} search terms for stock videos, depending on the subject of a video.
+Generate exactly {amount} English search terms for finding stock video footage on Pexels or Pixabay that VISUALLY matches the video content.
 
-## Constrains:
-1. the search terms are to be returned as a json-array of strings.
-2. each search term should consist of 1-3 words, always add the main subject of the video.
-3. you must only return the json-array of strings. you must not return anything else. you must not return the script.
-4. the search terms must be related to the subject of the video.
-5. reply with english search terms only.
+## Strategy - Generate terms in THREE layers for maximum visual coverage:
+
+### Layer 1 - SUBJECT terms (core visual objects/people in the video):
+   - What specific people, objects, or things should appear on screen?
+   - Examples: "entrepreneur speaking", "businessman shaking hands", "team meeting office"
+
+### Layer 2 - SCENE/ACTION terms (what is happening visually):
+   - What activities, environments, or settings should be shown?
+   - Examples: "city skyline night", "technology data visualization", "people celebrating success"
+
+### Layer 3 - MOOD/ATMOSPHERE terms (visual tone and emotion):
+   - What visual mood or emotional tone matches the content?
+   - Examples: "inspiring sunrise timelapse", "futuristic digital background", "confident leadership"
+
+## Strict Rules:
+1. Return ONLY a JSON array of exactly {amount} strings. No other text.
+2. ALL terms must be in English only.
+3. Each term: 2-5 words, descriptive and visual.
+4. AVOID overly specific proper nouns or brand names not found in stock libraries.
+5. PREFER terms that are visually distinct from each other — maximize diversity.
+6. THINK like a video editor: what footage would you cut to while hearing this script?
+7. Use concrete visual descriptions, not abstract concepts.
+   - BAD: "success", "business", "technology"
+   - GOOD: "entrepreneur giving speech stage", "team celebrating office", "glowing circuit board closeup"
 
 ## Output Example:
-["search term 1", "search term 2", "search term 3","search term 4","search term 5"]
+["search term 1", "search term 2", "search term 3", "search term 4", "search term 5"]
 
 ## Context:
 ### Video Subject
@@ -425,8 +446,6 @@ Generate {amount} search terms for stock videos, depending on the subject of a v
 
 ### Video Script
 {video_script}
-
-Please note that you must use English for generating video search terms; Chinese is not accepted.
 """.strip()
 
     logger.info(f"subject: {video_subject}")
@@ -478,4 +497,4 @@ if __name__ == "__main__":
     )
     print("######################")
     print(search_terms)
-    
+

@@ -27,13 +27,13 @@ from app.services import task as tm
 from app.utils import utils
 
 st.set_page_config(
-    page_title="MoneyPrinterTurbo",
+    page_title="码布斯视频剪辑系统",
     page_icon="🤖",
     layout="wide",
     initial_sidebar_state="auto",
     menu_items={
         "Report a bug": "https://github.com/harry0703/MoneyPrinterTurbo/issues",
-        "About": "# MoneyPrinterTurbo\nSimply provide a topic or keyword for a video, and it will "
+        "About": "# 码布斯视频剪辑系统\nSimply provide a topic or keyword for a video, and it will "
         "automatically generate the video copy, video materials, video subtitles, "
         "and video background music before synthesizing a high-definition short "
         "video.\n\nhttps://github.com/harry0703/MoneyPrinterTurbo",
@@ -74,7 +74,7 @@ locales = utils.load_locales(i18n_dir)
 title_col, lang_col = st.columns([3, 1])
 
 with title_col:
-    st.title(f"MoneyPrinterTurbo v{config.project_version}")
+    st.title(f"码布斯视频剪辑系统 v{config.project_version}")
 
 with lang_col:
     display_languages = []
@@ -478,6 +478,30 @@ if not config.app.get("hide_config", False):
             )
             save_keys_to_config("pixabay_api_keys", pixabay_api_key)
 
+            st.write("Kling AI Settings")
+            kling_access_key = st.text_input(
+                "Kling Access Key",
+                value=config.app.get("kling_access_key", ""),
+                type="password",
+            )
+            kling_secret_key = st.text_input(
+                "Kling Secret Key",
+                value=config.app.get("kling_secret_key", ""),
+                type="password",
+            )
+            if kling_access_key:
+                config.app["kling_access_key"] = kling_access_key
+            if kling_secret_key:
+                config.app["kling_secret_key"] = kling_secret_key
+            kling_model = st.selectbox(
+                "Kling Model",
+                options=["kling-v1", "kling-v1-5", "kling-v1-6", "kling-v2"],
+                index=["kling-v1", "kling-v1-5", "kling-v1-6", "kling-v2"].index(
+                    config.app.get("kling_model_name", "kling-v1")
+                ),
+            )
+            config.app["kling_model_name"] = kling_model
+
 llm_provider = config.app.get("llm_provider", "").lower()
 panel = st.columns(3)
 left_panel = panel[0]
@@ -514,14 +538,36 @@ with left_panel:
         )
         params.video_language = video_languages[selected_index][1]
 
+        script_word_count = st.number_input(
+            tr("Script Word Count"),
+            min_value=0,
+            max_value=5000,
+            value=0,
+            step=50,
+            help=tr("Set to 0 for no limit. Specify the approximate number of characters (Chinese) or words (other languages) for the generated script."),
+            key="script_word_count",
+        )
+
+        terms_amount = st.number_input(
+            tr("Video Keywords Count"),
+            min_value=1,
+            max_value=30,
+            value=10,
+            step=1,
+            help=tr("More keywords = more diverse video footage. Recommended: 10-15."),
+            key="terms_amount",
+        )
+
         if st.button(
             tr("Generate Video Script and Keywords"), key="auto_generate_script"
         ):
             with st.spinner(tr("Generating Video Script and Keywords")):
                 script = llm.generate_script(
-                    video_subject=params.video_subject, language=params.video_language
+                    video_subject=params.video_subject,
+                    language=params.video_language,
+                    word_count=int(script_word_count),
                 )
-                terms = llm.generate_terms(params.video_subject, script)
+                terms = llm.generate_terms(params.video_subject, script, amount=int(terms_amount))
                 if "Error: " in script:
                     st.error(tr(script))
                 elif "Error: " in terms:
@@ -532,13 +578,14 @@ with left_panel:
         params.video_script = st.text_area(
             tr("Video Script"), value=st.session_state["video_script"], height=280
         )
+
         if st.button(tr("Generate Video Keywords"), key="auto_generate_terms"):
             if not params.video_script:
                 st.error(tr("Please Enter the Video Subject"))
                 st.stop()
 
             with st.spinner(tr("Generating Video Keywords")):
-                terms = llm.generate_terms(params.video_subject, params.video_script)
+                terms = llm.generate_terms(params.video_subject, params.video_script, amount=int(terms_amount))
                 if "Error: " in terms:
                     st.error(tr(terms))
                 else:
@@ -558,6 +605,8 @@ with middle_panel:
         video_sources = [
             (tr("Pexels"), "pexels"),
             (tr("Pixabay"), "pixabay"),
+            ("Kling AI", "kling"),
+            ("火山即梦 (Seedance)", "volcengine"),
             (tr("Local file"), "local"),
             (tr("TikTok"), "douyin"),
             (tr("Bilibili"), "bilibili"),
@@ -580,7 +629,13 @@ with middle_panel:
 
         if params.video_source == "local":
             uploaded_files = st.file_uploader(
-                "Upload Local Files",
+                tr("Upload Local Files"),
+                type=["mp4", "mov", "avi", "flv", "mkv", "jpg", "jpeg", "png"],
+                accept_multiple_files=True,
+            )
+        elif params.video_source in ("pexels", "pixabay"):
+            uploaded_files = st.file_uploader(
+                tr("Upload Local Files") + " (" + tr("Optional, combined with network source") + ")",
                 type=["mp4", "mov", "avi", "flv", "mkv", "jpg", "jpeg", "png"],
                 accept_multiple_files=True,
             )
@@ -998,7 +1053,7 @@ if start_button:
         scroll_to_bottom()
         st.stop()
 
-    if params.video_source not in ["pexels", "pixabay", "local"]:
+    if params.video_source not in ["pexels", "pixabay", "kling", "volcengine", "local"]:
         st.error(tr("Please Select a Valid Video Source"))
         scroll_to_bottom()
         st.stop()
@@ -1011,6 +1066,14 @@ if start_button:
     if params.video_source == "pixabay" and not config.app.get("pixabay_api_keys", ""):
         st.error(tr("Please Enter the Pixabay API Key"))
         scroll_to_bottom()
+
+    if params.video_source == "kling" and (
+        not config.app.get("kling_access_key", "")
+        or not config.app.get("kling_secret_key", "")
+    ):
+        st.error("Please enter Kling Access Key and Secret Key in Basic Settings")
+        scroll_to_bottom()
+        st.stop()
         st.stop()
 
     if uploaded_files:

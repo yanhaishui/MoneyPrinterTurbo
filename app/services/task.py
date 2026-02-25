@@ -189,6 +189,17 @@ def get_video_materials(task_id, params, video_terms, audio_duration):
                 "failed to download videos, maybe the network is not available. if you are in China, please use a VPN."
             )
             return None
+        # Combine with local materials if provided
+        if params.video_materials:
+            logger.info("\n\n## combining with local supplemental materials")
+            local_materials = video.preprocess_video(
+                materials=params.video_materials,
+                clip_duration=params.video_clip_duration,
+            )
+            local_paths = [m.url for m in local_materials if m.url]
+            if local_paths:
+                logger.info(f"added {len(local_paths)} local videos to the pool")
+                return local_paths + downloaded_videos
         return downloaded_videos
 
 

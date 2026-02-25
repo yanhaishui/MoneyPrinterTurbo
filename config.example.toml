@@ -108,6 +108,15 @@ modelscope_api_key = ""
 modelscope_base_url = "https://api-inference.modelscope.cn/v1/"
 modelscope_model_name = "Qwen/Qwen3-32B"
 
+########## Kling AI API
+# Visit https://klingai.com/cn/dev to get your AccessKey and SecretKey
+kling_access_key = ""
+kling_secret_key = ""
+# Model: kling-v1 / kling-v1-5 / kling-v1-6 / kling-v2
+kling_model_name = "kling-v1"
+# Duration: 5 or 10 (seconds)
+kling_duration = "5"
+
 # Subtitle Provider, "edge" or "whisper"
 # If empty, the subtitle will not be generated
 subtitle_provider = "edge"
